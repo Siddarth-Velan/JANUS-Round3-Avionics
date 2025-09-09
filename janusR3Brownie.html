@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <title>Live Data Plotly Graph thats mostly not AI generated</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        
+    </style>
+</head>
+<body>
+    <h1>Janus R3 Q2 (brownie) that is majorly not ai generated</h1>
+    <button onclick="plotdata()">Display Graph</button>
+    <div id="plot"></div>
+    <script>
+            
+
+    //making function to plot the actual data
+
+    async function plotdata() {
+        //empty arrays to use later
+        let lat = [];
+        let long = [];
+        let alt = [];
+
+        Plotly.newPlot('plot', [{
+            x: lat,
+            y: long,
+            z: alt,
+            mode: 'lines+markers',
+            type: 'scatter3d',
+            line: {color: 'red'}
+        }], {
+            title: 'Satellite Data Stream',
+            scene:{
+            xaxis: {title: 'latitude'},
+            yaxis: {title: 'longitude'},
+            zaxis: {title: 'altitude'}
+            }
+        });
+        //creating a constant port to connect to the arduino and setting its transmission freq to 9600
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+
+        const decoder = new TextDecoderStream();
+        port.readable.pipeTo(decoder.writable);
+        //converting and reading the ardiuno raw data to something i can understand (in realtime)
+        const reader = decoder.readable.getReader();
+
+        
+        while (true) {
+            //update the original latitude ,longitude and altitude arrays with the new data IFF it exists
+            const { value, done } = await reader.read();
+            if (done) 
+            {
+                console.log("data stream terminated");
+                break;
+            }
+            if (value) 
+            {
+                
+                const lat1 = parseFloat(value.split(",")[2]);
+                const long1 = parseFloat(value.split(",")[4]);
+                const alt1 = parseFloat(value.split(",")[9]);
+                //coordv is vertial direction(n or s) coordh is horizontal direction (e or w)
+                const coordv = parseFloat(value.split(",")[3]);
+                const coordh = parseFloat(value.split(",")[5]);
+                //make the gngga data to dec degrees
+                let lat_deg = Math.floor(lat1 / 100);      
+                let lat_min = lat1 % 100;                 
+                lat1 = lat_deg + (lat_min / 60);                        
+                let long_deg = Math.floor(long1 / 100);
+                let long_min = long1 % 100;
+                long1 = lon_deg + (lon_min / 60);
+
+                // conforming data to classic cartesian representation
+                if (coordv === 'S' ){
+                    lat1 = -lat1;
+                };
+                if (coordh ==='W'){
+                    long1 = -long1;
+                };
+
+                //appending the new data to the arrays
+                lat.push(lat1);
+                long.push(long1);
+                alt.push(alt1);
+
+                Plotly.extendTraces('plot', 
+                {
+                    //take the last part of each array and plot it as a new point in the graph
+                    x: [[lat[lat.length-1]]],
+                    y: [[long[long.length-1]]],
+                    z: [[alt[alt.length-1]]]
+                }, [0]);
+            }
+        }
+    }
+
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <title>Live Data Plotly Graph thats mostly not AI generated</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        
+    </style>
+</head>
+<body>
+    <h1>Janus R3 Q2 that is majorly not ai generated(enjoy testing)</h1>
+    <button onclick="plotdata()">Display Graph</button>
+    <div id="plot"></div>
+    <script>
+
+    //making function to plot the actual data
+
+    async function plotdata() {
+        //empty arrays to use later
+        let x = [];
+        let y = [];
+
+        Plotly.newPlot('plot', [{
+            x: x,
+            y: y,
+            mode: 'lines+markers',
+            line: {color: 'red'}
+        }], {
+            title: 'Arduino Data Stream',
+            xaxis: {title: 'Time'},
+            //cant test u guys figure it out
+            yaxis: {title: 'Probably velocity or altitude or somn idfk'}
+        });
+        //creating a constant port to connect to the arduino and setting its transmission freq to 9600
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+
+        const decoder = new TextDecoderStream();
+        port.readable.pipeTo(decoder.writable);
+        //converting and reading the ardiuno raw data to something i can understand (in realtime)
+        const reader = decoder.readable.getReader();
+
+        let time = 0;
+        while (true) {
+            //update the original x and y arrays with the new data IFF it exists
+            const { value, done } = await reader.read();
+            if (done) 
+            {
+                console.log("data stream terminated");
+                break;
+            }
+            if (value) 
+            {
+                const f = parseFloat(value);
+                x.push(time++);
+                y.push(f);
+
+                Plotly.extendTraces('plot', 
+                {
+                    //take the last part of each array and plot it as a new point in the graph
+                    x: [[x[x.length-1]]],
+                    y: [[y[y.length-1]]]
+                }, [0]);
+            }
+        }
+    }
+
+
+    </script>
+</body>
+</html>
